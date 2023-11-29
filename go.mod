@@ -1,4 +1,4 @@
-module s3Fuzz
+module github.com/Bamorph/s3Fuzz
 
 go 1.12
 
