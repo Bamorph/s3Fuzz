@@ -8,8 +8,14 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/fatih/color"
+)
+
+var (
+	concurrency int
+	wg          sync.WaitGroup
 )
 
 func buildNames(keywords []string, mutations []string, suffixs []string, prefixs []string) []string {
@@ -110,6 +116,7 @@ func appendAWS(names []string) []string {
 }
 
 func resolveurl(url string) {
+	defer wg.Done()
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -144,7 +151,7 @@ func yellowPrint(text string) {
 	yellow.Println(text)
 }
 
-// const version = "0.0.1"
+// const version = "0.0.2"
 
 func main() {
 	var (
@@ -157,6 +164,8 @@ func main() {
 	flag.StringVar(&prefixs, "p", "", "TODO: Description")
 	flag.StringVar(&suffixs, "s", "", "TODO: Description")
 	flag.StringVar(&mutations, "m", "", "TODO: Description")
+
+	flag.IntVar(&concurrency, "c", 5, "Number of concurrent workers")
 
 	flag.Parse()
 
@@ -200,16 +209,29 @@ func main() {
 
 	urls := appendAWS(names)
 	total_test := len(urls)
+
 	fmt.Printf("[+] Keywords: %s\n", keywords)
-
 	fmt.Printf("[+] Total urls to test: %v\n\n", total_test)
-
 	cyanPrint("[+] Amazon S3 Buckets\n")
 
+	urlCh := make(chan string, concurrency)
+
+	for i := 0; i < concurrency; i++ {
+		go func() {
+			for url := range urlCh {
+				resolveurl(url)
+			}
+		}()
+	}
 	for i, url := range urls {
 		fmt.Printf("\033[K")
 		fmt.Printf("%d / %d, URL: %s\r", i, len(urls), url)
-		resolveurl(url)
+		wg.Add(1)
+		urlCh <- url
 	}
+
+	close(urlCh)
+
+	wg.Wait()
 
 }
