@@ -225,7 +225,8 @@ func main() {
 	}
 	for i, url := range urls {
 		fmt.Printf("\033[K")
-		fmt.Printf("%d / %d, URL: %s\r", i, len(urls), url)
+		// fmt.Printf("%d / %d, URL: %s\r", i, len(urls), url)
+		fmt.Printf("%d / %d\r", i, len(urls))
 		wg.Add(1)
 		urlCh <- url
 	}
