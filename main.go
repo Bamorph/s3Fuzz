@@ -170,7 +170,7 @@ func main() {
 	flag.StringVar(&mutations, "w", "", "wordlist file")
 
 	flag.IntVar(&concurrency, "c", 5, "Number of concurrent workers")
-	flag.IntVar(&delay, "d", 500, "Delay time in milliseconds")
+	flag.IntVar(&delay, "d", 1000, "Delay time in milliseconds")
 
 	flag.Parse()
 
