@@ -9,12 +9,14 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fatih/color"
 )
 
 var (
 	concurrency int
+	delay       int
 	wg          sync.WaitGroup
 )
 
@@ -118,6 +120,8 @@ func appendAWS(names []string) []string {
 func resolveurl(url string) {
 	defer wg.Done()
 
+	time.Sleep(time.Duration(delay) * time.Millisecond)
+
 	resp, err := http.Get(url)
 	if err != nil {
 		return
@@ -166,6 +170,7 @@ func main() {
 	flag.StringVar(&mutations, "w", "", "wordlist file")
 
 	flag.IntVar(&concurrency, "c", 5, "Number of concurrent workers")
+	flag.IntVar(&delay, "d", 500, "Delay time in milliseconds")
 
 	flag.Parse()
 
