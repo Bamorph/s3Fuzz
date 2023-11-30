@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"encoding/xml"
+
 
 	"github.com/fatih/color"
 )
