@@ -146,7 +146,7 @@ func resolveurl(url string) {
 		}
 
 		var result ListBucketResult
-		err = xml.Unmarshall(body, &result)
+		err = xml.Unmarshal(body, &result)
 		if err != nil {
 			fmt.Println("error XML: ", err)
 			return
