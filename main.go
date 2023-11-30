@@ -227,7 +227,7 @@ func main() {
 		fmt.Printf("\033[K")
 		// fmt.Printf("%d / %d, URL: %s\r", i, len(urls), url)
 		fmt.Printf("%d / %d, URL: %s\r", i, len(urls), url[:10]) // only show the first 10 characters of the url
-		fmt.Printf("%d / %d\r", i, len(urls))
+		// fmt.Printf("%d / %d\r", i, len(urls))
 		wg.Add(1)
 		urlCh <- url
 	}
