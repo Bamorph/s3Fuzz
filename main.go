@@ -4,14 +4,12 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
+	"io/ioutil"
 	"regexp"
 	"strings"
 	"sync"
-	"encoding/xml"
-
 
 	"github.com/fatih/color"
 )
@@ -118,14 +116,6 @@ func appendAWS(names []string) []string {
 	return result
 }
 
-type Contents struct {
-	Key string `xml:"Key"`
-}
-
-type ListBucketResult struct {
-	Contents []Contents `xml:"Contents"`
-}
-
 func resolveurl(url string) {
 	defer wg.Done()
 
@@ -138,25 +128,8 @@ func resolveurl(url string) {
 	switch resp.StatusCode {
 	case http.StatusOK:
 		greenPrint("Open: " + url)
-
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Println("error READ BODY: ", err)
-			return
-		}
-
-		var result ListBucketResult
-		err = xml.Unmarshal(body, &result)
-		if err != nil {
-			fmt.Println("error XML: ", err)
-			return
-		}
-
-		for _, content := range result.Contents {
-			fmt.Printf("%s/%s",url,content.Key)
-		}
-		
-
+		body, _ := ioutil.ReadAll(resp.Body)
+		fmt.Println(body)
 	case http.StatusForbidden:
 		yellowPrint("Protected: " + url)
 	case http.StatusNotFound:
