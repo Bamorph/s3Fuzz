@@ -1,1 +1,7 @@
 www
+updates
+graphics
+compute
+static
+assets
+prod

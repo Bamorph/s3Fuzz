@@ -1,1 +1,8 @@
 com
+stable
+media
+production
+firmware
+download
+nightlies
+prod

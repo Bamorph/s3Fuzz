@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
@@ -37,6 +36,9 @@ func buildNames(keywords []string, suffixs []string, prefixs []string) []string 
 					names = append(names, fmt.Sprintf("%s-%s-%s", prefix, keyword, suffix))
 					names = append(names, fmt.Sprintf("%s.%s.%s", prefix, keyword, suffix))
 					names = append(names, fmt.Sprintf("%s%s%s", prefix, keyword, suffix))
+					names = append(names, fmt.Sprintf("%s-%s-%s", keyword, prefix, suffix))
+					names = append(names, fmt.Sprintf("%s.%s.%s", keyword, prefix, suffix))
+					names = append(names, fmt.Sprintf("%s%s%s", keyword, prefix, suffix))
 				}
 			}
 		}
@@ -94,17 +96,17 @@ func cleanText(text string) string {
 	return textClean
 }
 
-func appendAWSlist(names []string) []string {
-	fmt.Printf("[+] Bulding %d URLS\n", len(names))
+// func appendAWSlist(names []string) []string {
+// 	fmt.Printf("[+] Bulding %d URLS\n", len(names))
 
-	var result []string
+// 	var result []string
 
-	for _, n := range names {
-		result = append(result, "https://"+n+".s3.amazonaws.com")
-	}
+// 	for _, n := range names {
+// 		result = append(result, "https://"+n+".s3.amazonaws.com")
+// 	}
 
-	return result
-}
+// 	return result
+// }
 
 func appendAWS(name string) string {
 	return "https://" + name + ".s3.amazonaws.com"
@@ -119,7 +121,7 @@ type ListBucketResult struct {
 }
 
 func readXMLContent(body io.Reader, bucket string) {
-	xmlContent, err := ioutil.ReadAll(body)
+	xmlContent, err := io.ReadAll(body)
 	if err != nil {
 		fmt.Println("Error reading XML content:", err)
 		return
@@ -213,7 +215,7 @@ func main() {
 	flag.StringVar(&prefixs, "p", "", "Prefix file")
 	flag.StringVar(&suffixs, "s", "", "Suffix file")
 
-	flag.IntVar(&delay, "d", 1000, "Delay time in milliseconds")
+	flag.IntVar(&delay, "d", 500, "Delay time in milliseconds")
 
 	// TODO: add output file for found buckets
 
