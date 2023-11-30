@@ -2,8 +2,11 @@ package main
 
 import (
 	"bufio"
+	"encoding/xml"
 	"flag"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
@@ -20,32 +23,38 @@ var (
 	wg          sync.WaitGroup
 )
 
-func buildNames(keywords []string, mutations []string, suffixs []string, prefixs []string) []string {
+// buildNames generates a list of possible names based on keywords, mutations, suffixes, and prefixes.
+func buildNames(keywords, mutations, suffixes, prefixes []string) []string {
 	var names []string
+
 	for _, keyword := range keywords {
 		names = append(names, keyword)
 
 		for _, mutation := range mutations {
-			names = append(names, fmt.Sprintf("%s%s", keyword, mutation))
-			names = append(names, fmt.Sprintf("%s.%s", keyword, mutation))
-			names = append(names, fmt.Sprintf("%s-%s", keyword, mutation))
-			names = append(names, fmt.Sprintf("%s%s", mutation, keyword))
-			names = append(names, fmt.Sprintf("%s.%s", mutation, keyword))
-			names = append(names, fmt.Sprintf("%s-%s", mutation, keyword))
+			if mutation != "" {
+				names = append(names, fmt.Sprintf("%s%s", keyword, mutation))
+				names = append(names, fmt.Sprintf("%s.%s", keyword, mutation))
+				names = append(names, fmt.Sprintf("%s-%s", keyword, mutation))
+				names = append(names, fmt.Sprintf("%s%s", mutation, keyword))
+				names = append(names, fmt.Sprintf("%s.%s", mutation, keyword))
+				names = append(names, fmt.Sprintf("%s-%s", mutation, keyword))
+			}
 		}
 
-		for _, suffix := range suffixs {
+		for _, suffix := range suffixes {
 			if suffix != "" {
 				names = append(names, fmt.Sprintf("%s-%s", keyword, suffix))
 				names = append(names, fmt.Sprintf("%s.%s", keyword, suffix))
 				names = append(names, fmt.Sprintf("%s%s", keyword, suffix))
 			}
-			for _, prefix := range prefixs {
+
+			for _, prefix := range prefixes {
 				if prefix != "" {
 					names = append(names, fmt.Sprintf("%s-%s", prefix, keyword))
 					names = append(names, fmt.Sprintf("%s.%s", prefix, keyword))
 					names = append(names, fmt.Sprintf("%s%s", prefix, keyword))
 				}
+
 				if prefix != "" && suffix != "" {
 					names = append(names, fmt.Sprintf("%s-%s-%s", prefix, keyword, suffix))
 					names = append(names, fmt.Sprintf("%s.%s.%s", prefix, keyword, suffix))
@@ -54,9 +63,11 @@ func buildNames(keywords []string, mutations []string, suffixs []string, prefixs
 			}
 		}
 	}
+
 	return names
 }
 
+// removeDuplicates removes duplicate strings from a slice.
 func removeDuplicates(input []string) []string {
 	seen := make(map[string]bool)
 	result := []string{}
@@ -71,6 +82,7 @@ func removeDuplicates(input []string) []string {
 	return result
 }
 
+// readLines reads lines from a file and returns them as a slice.
 func readLines(filename string) ([]string, error) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -87,6 +99,7 @@ func readLines(filename string) ([]string, error) {
 	return lines, nil
 }
 
+// cleanTextList applies cleanText to a list of strings.
 func cleanTextList(textList []string) []string {
 	var cleanedList []string
 
@@ -98,8 +111,8 @@ func cleanTextList(textList []string) []string {
 	return cleanedList
 }
 
+// cleanText removes unwanted characters from a string.
 func cleanText(text string) string {
-
 	bannedChars := regexp.MustCompile(`[^a-z0-9.-]`)
 	textLower := strings.ToLower(text)
 	textClean := bannedChars.ReplaceAllString(textLower, "")
@@ -107,17 +120,47 @@ func cleanText(text string) string {
 	return textClean
 }
 
-func appendAWS(names []string) []string {
-	var result []string
-
-	for _, n := range names {
-		result = append(result, "https://"+n+".s3.amazonaws.com")
-	}
-
-	return result
+// appendAWS prepends "https://" and appends ".s3.amazonaws.com" to a string.
+func appendAWS(name string) string {
+	return "https://" + name + ".s3.amazonaws.com"
 }
 
-func resolveurl(url string) {
+// Contents represents the Key field in XML content.
+type Contents struct {
+	Key string `xml:"Key"`
+}
+
+// ListBucketResult represents the XML structure of an S3 bucket.
+type ListBucketResult struct {
+	Contents []Contents `xml:"Contents"`
+}
+
+// readXMLContent reads and processes XML content from an HTTP response.
+func readXMLContent(body io.Reader, bucket string) {
+	xmlContent, err := ioutil.ReadAll(body)
+	if err != nil {
+		fmt.Println("Error reading XML content:", err)
+		return
+	}
+
+	var result ListBucketResult
+	err = xml.Unmarshal(xmlContent, &result)
+	if err != nil {
+		fmt.Println("Error Unmarshalling XML:", err)
+		return
+	}
+
+	if len(result.Contents) == 0 {
+		redPrint("EMPTY BUCKET")
+	}
+
+	for _, content := range result.Contents {
+		fmt.Printf("%s/%s\n", bucket, content.Key)
+	}
+}
+
+// resolveURL sends an HTTP request to the given URL and processes the response.
+func resolveURL(url string) {
 	defer wg.Done()
 
 	time.Sleep(time.Duration(delay) * time.Millisecond)
@@ -131,32 +174,52 @@ func resolveurl(url string) {
 	switch resp.StatusCode {
 	case http.StatusOK:
 		greenPrint("Open: " + url)
+
+		if strings.Contains(resp.Header.Get("Content-Type"), "xml") {
+			readXMLContent(resp.Body, url)
+		}
 	case http.StatusForbidden:
 		yellowPrint("Protected: " + url)
-	case http.StatusNotFound:
-		return
 	}
-
 }
 
+// cyanPrint prints text in cyan color.
 func cyanPrint(text string) {
 	fmt.Printf("\033[K")
 	cyan := color.New(color.FgHiCyan, color.Bold)
 	cyan.Println(text)
 }
+
+// redPrint prints text in red color.
+func redPrint(text string) {
+	fmt.Printf("\033[K")
+	red := color.New(color.FgRed, color.Bold)
+	red.Println(text)
+}
+
+// greenPrint prints text in green color.
 func greenPrint(text string) {
 	fmt.Printf("\033[K")
 	green := color.New(color.FgGreen, color.Bold)
 	green.Println(text)
 }
+
+// yellowPrint prints text in yellow color.
 func yellowPrint(text string) {
 	fmt.Printf("\033[K")
 	yellow := color.New(color.FgHiYellow, color.Bold)
 	yellow.Println(text)
 }
 
-// const version = "0.0.3"
+// addWorker creates concurrent workers to resolve URLs.
+func addWorker(nameCh <-chan string) {
+	for name := range nameCh {
+		url := appendAWS(name)
+		resolveURL(url)
+	}
+}
 
+// main is the entry point of the program.
 func main() {
 	var (
 		prefixs   string
@@ -165,8 +228,8 @@ func main() {
 		keywords  []string
 	)
 
-	flag.StringVar(&prefixs, "p", "", "TODO: Description")
-	flag.StringVar(&suffixs, "s", "", "TODO: Description")
+	flag.StringVar(&prefixs, "p", "", "prefix file")
+	flag.StringVar(&suffixs, "s", "", "suffix file")
 	flag.StringVar(&mutations, "w", "", "wordlist file")
 
 	flag.IntVar(&concurrency, "c", 5, "Number of concurrent workers")
@@ -181,64 +244,4 @@ func main() {
 
 	keywords = cleanTextList(flag.Args())
 
-	prefixLines, err := readLines(prefixs)
-	if err != nil {
-		if os.IsNotExist(err) {
-			prefixLines = []string{""}
-		} else {
-			fmt.Println("Error reading prefix file:", err)
-			os.Exit(1)
-		}
-	}
-
-	suffixLines, err := readLines(suffixs)
-	if err != nil {
-		if os.IsNotExist(err) {
-			suffixLines = []string{""}
-		} else {
-			fmt.Println("Error reading suffix file:", err)
-			os.Exit(1)
-		}
-	}
-	mutationsLines, err := readLines(mutations)
-	if err != nil {
-		if os.IsNotExist(err) {
-			mutationsLines = []string{""}
-		} else {
-			os.Exit(1)
-		}
-	}
-	var names = buildNames(keywords, suffixLines, mutationsLines, prefixLines)
-
-	names = removeDuplicates(names)
-
-	urls := appendAWS(names)
-	total_test := len(urls)
-
-	fmt.Printf("[+] Keywords: %s\n", keywords)
-	fmt.Printf("[+] Total urls to test: %v\n\n", total_test)
-	cyanPrint("[+] Amazon S3 Buckets\n")
-
-	urlCh := make(chan string, concurrency)
-
-	for i := 0; i < concurrency; i++ {
-		go func() {
-			for url := range urlCh {
-				resolveurl(url)
-			}
-		}()
-	}
-	for i, url := range urls {
-		fmt.Printf("\033[K")
-		// fmt.Printf("%d / %d, URL: %s\r", i, len(urls), url)
-		fmt.Printf("%d / %d, URL: %s\r", i, len(urls), url[:20]) // only show the first 10 characters of the url
-		// fmt.Printf("%d / %d\r", i, len(urls))
-		wg.Add(1)
-		urlCh <- url
-	}
-
-	close(urlCh)
-
-	wg.Wait()
-
-}
+	prefixLines, err
