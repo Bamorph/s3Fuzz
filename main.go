@@ -128,8 +128,8 @@ func resolveurl(url string) {
 	switch resp.StatusCode {
 	case http.StatusOK:
 		greenPrint("Open: " + url)
-		body, _ := ioutil.ReadAll(resp.Body)
-		fmt.Println(body)
+		// body, _ := ioutil.ReadAll(resp.Body)
+		// fmt.Println(body)
 	case http.StatusForbidden:
 		yellowPrint("Protected: " + url)
 	case http.StatusNotFound:
