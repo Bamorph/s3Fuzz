@@ -163,7 +163,7 @@ func main() {
 
 	flag.StringVar(&prefixs, "p", "", "TODO: Description")
 	flag.StringVar(&suffixs, "s", "", "TODO: Description")
-	flag.StringVar(&mutations, "m", "", "TODO: Description")
+	flag.StringVar(&mutations, "w", "", "wordlist file")
 
 	flag.IntVar(&concurrency, "c", 5, "Number of concurrent workers")
 
