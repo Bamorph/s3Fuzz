@@ -2,17 +2,17 @@ package main
 
 import (
 	"bufio"
+	"encoding/xml"
 	"flag"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
-	"io"
-	"io/ioutil"
-	"encoding/xml"
 
 	"github.com/fatih/color"
 )
@@ -30,12 +30,12 @@ func buildNames(keywords []string, mutations []string, suffixs []string, prefixs
 
 		for _, mutation := range mutations {
 			if mutation != "" {
-			names = append(names, fmt.Sprintf("%s%s", keyword, mutation))
-			names = append(names, fmt.Sprintf("%s.%s", keyword, mutation))
-			names = append(names, fmt.Sprintf("%s-%s", keyword, mutation))
-			names = append(names, fmt.Sprintf("%s%s", mutation, keyword))
-			names = append(names, fmt.Sprintf("%s.%s", mutation, keyword))
-			names = append(names, fmt.Sprintf("%s-%s", mutation, keyword))
+				names = append(names, fmt.Sprintf("%s%s", keyword, mutation))
+				names = append(names, fmt.Sprintf("%s.%s", keyword, mutation))
+				names = append(names, fmt.Sprintf("%s-%s", keyword, mutation))
+				names = append(names, fmt.Sprintf("%s%s", mutation, keyword))
+				names = append(names, fmt.Sprintf("%s.%s", mutation, keyword))
+				names = append(names, fmt.Sprintf("%s-%s", mutation, keyword))
 			}
 		}
 
@@ -141,12 +141,11 @@ func readXMLContent(body io.Reader, bucket string) {
 		redPrint("EMPTY BUCKET")
 	}
 	for _, content := range result.Contents {
-		fmt.Printf("%s/%s\n",bucket, content.Key)
+		fmt.Printf("%s/%s\n", bucket, content.Key)
 	}
-	
+
 	// fmt.Println(string(xmlContent))
 }
-
 
 func resolveurl(url string) {
 	defer wg.Done()
@@ -208,7 +207,6 @@ func addWorker(nameCh <-chan string) {
 		resolveurl(url)
 	}
 }
-
 
 func main() {
 	var (
