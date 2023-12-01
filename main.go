@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/miekg/dns"
 )
 
 func buildNames(keywords []string, mutations []string) []string {
@@ -33,7 +34,6 @@ func buildNames(keywords []string, mutations []string) []string {
 
 		}
 
-		// 515
 		// for _, suffix := range suffixs {
 		// if suffix != "" {
 		// 	names = append(names, fmt.Sprintf("%s-%s", keyword, suffix))
@@ -206,7 +206,44 @@ func saveState(count int) {
 
 }
 
+func resolveDNS(name string) {
+
+	dnsServer := "8.8.8.8:53"
+	domain := name + ".s3.amazonaws.com"
+
+	s3NoSuchBucket := "s3-1-w.amazonaws.com."
+
+	client := new(dns.Client)
+	message := new(dns.Msg)
+	message.SetQuestion(dns.Fqdn(domain), dns.TypeCNAME)
+
+	resp, _, err := client.Exchange(message, dnsServer)
+	if err != nil {
+		return
+	}
+	if len(resp.Answer) == 0 {
+		fmt.Printf("no CNAME: %s", domain)
+		return
+	}
+	cname := resp.Answer[0].(*dns.CNAME).Target
+
+	if strings.Contains(cname, s3NoSuchBucket) {
+		// fmt.Println("DNS Search Failed")
+		// redPrint(cname)
+		// redPrint(domain)
+		// fmt.Print("\n\n")
+	} else {
+		// fmt.Println("DNS Search Success")
+		resolveurl(name)
+		// yellowPrint(domain)
+	}
+	// fmt.Println(domain)
+	// fmt.Println(cname)
+}
+
 func resolveurl(name string) {
+
+	// resolveDNS(name)
 
 	url := appendAWS(name)
 
@@ -223,9 +260,10 @@ func resolveurl(name string) {
 		greenPrint("Open: " + url)
 		anew("open.log", url)
 		anew("found.log", name)
-
-		if strings.Contains(resp.Header.Get("Content-Type"), "xml") {
-			readXMLContent(resp.Body, url)
+		if showFiles {
+			if strings.Contains(resp.Header.Get("Content-Type"), "xml") {
+				readXMLContent(resp.Body, url)
+			}
 		}
 	case http.StatusForbidden:
 		yellowPrint("Protected: " + url)
@@ -258,13 +296,15 @@ func yellowPrint(text string) {
 	yellow.Println(text)
 }
 
-// const version = "0.0.7"
+// const version = "0.0.8"
 
 // TODO: Feature: can we add a test to attempt to resolve a known bucket to see if we are blocked by AWS and end the search?
 
 var (
 	delay     int
 	skipCount int
+	// provider  string
+	showFiles bool
 )
 
 func main() {
@@ -272,10 +312,15 @@ func main() {
 		wordlist     string
 		keywords     []string
 		restoreState bool
+		quickScan    bool
 	)
 	flag.StringVar(&wordlist, "w", "", "wordlist file")
 
+	// flag.StringVar(&provider, "aws", "", "Provider")
+
 	flag.BoolVar(&restoreState, "restore", false, "restore point from file")
+	flag.BoolVar(&quickScan, "qs", false, "Quick Scan, Use DNS scan only")
+	flag.BoolVar(&showFiles, "enum", false, "Enumerate filenames")
 
 	flag.IntVar(&skipCount, "skip", 0, "skip first x urls")
 	flag.IntVar(&delay, "d", 0, "Delay time in milliseconds")
@@ -324,7 +369,11 @@ func main() {
 		name := names[i]
 		fmt.Printf("\033[K")
 		fmt.Printf("%d / %d, URL: %s\r", i, len(names), name)
-		resolveurl(name)
+		if quickScan {
+			resolveDNS(name)
+		} else {
+			resolveurl(name)
+		}
 		saveState(i)
 	}
 
