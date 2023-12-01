@@ -17,7 +17,7 @@ import (
 	"github.com/miekg/dns"
 )
 
-func buildNames(keywords []string, mutations []string) []string {
+func buildNames(keywords []string, mutations []string, prefixs []string, suffixs []string) []string {
 	var names []string
 
 	for _, keyword := range keywords {
@@ -26,37 +26,37 @@ func buildNames(keywords []string, mutations []string) []string {
 		delimiters := []string{"-", ".", ""}
 
 		for _, mutation := range mutations {
-			for _, delimiter := range delimiters {
-				mutation = cleanText(mutation)
-				names = append(names, fmt.Sprintf("%s%s%s", keyword, delimiter, mutation))
-				names = append(names, fmt.Sprintf("%s%s%s", mutation, delimiter, keyword))
+			if mutation != "" {
+				for _, delimiter := range delimiters {
+					mutation = cleanText(mutation)
+					names = append(names, fmt.Sprintf("%s%s%s", keyword, delimiter, mutation))
+					names = append(names, fmt.Sprintf("%s%s%s", mutation, delimiter, keyword))
+				}
+			}
+		}
+		for _, prefix := range prefixs {
+			if prefix != "" {
+				for _, delimiter := range delimiters {
+					names = append(names, fmt.Sprintf("%s%s%s", prefix, delimiter, keyword))
+				}
+			}
+			for _, suffix := range suffixs {
+				if suffix != "" {
+					for _, delimiter := range delimiters {
+						names = append(names, fmt.Sprintf("%s%s%s", suffix, delimiter, keyword))
+					}
+				}
+				if prefix != "" && suffix != "" {
+					for _, delimiter := range delimiters {
+						names = append(names, fmt.Sprintf("%s%s%s%s%s", prefix, delimiter, keyword, delimiter, suffix))
+					}
+				}
 			}
 
 		}
 
-		// for _, suffix := range suffixs {
-		// if suffix != "" {
-		// 	names = append(names, fmt.Sprintf("%s-%s", keyword, suffix))
-		// 	names = append(names, fmt.Sprintf("%s.%s", keyword, suffix))
-		// 	names = append(names, fmt.Sprintf("%s%s", keyword, suffix))
-		// }
-		// for _, prefix := range prefixs {
-		// if prefix != "" {
-		// 	names = append(names, fmt.Sprintf("%s-%s", prefix, keyword))
-		// 	names = append(names, fmt.Sprintf("%s.%s", prefix, keyword))
-		// 	names = append(names, fmt.Sprintf("%s%s", prefix, keyword))
-		// }
-		// if prefix != "" && suffix != "" {
-		// 	names = append(names, fmt.Sprintf("%s-%s-%s", prefix, keyword, suffix))
-		// 	names = append(names, fmt.Sprintf("%s.%s.%s", prefix, keyword, suffix))
-		// 	names = append(names, fmt.Sprintf("%s%s%s", prefix, keyword, suffix))
-		// 	names = append(names, fmt.Sprintf("%s-%s-%s", keyword, prefix, suffix))
-		// 	names = append(names, fmt.Sprintf("%s.%s.%s", keyword, prefix, suffix))
-		// 	names = append(names, fmt.Sprintf("%s%s%s", keyword, prefix, suffix))
-		// }
-		// }
-		// }
 	}
+
 	fmt.Printf("[+] Mutated results: %v items\n", len(names))
 	return names
 }
@@ -190,9 +190,13 @@ func anew(filename, line string) error {
 
 }
 
+const (
+	stateFile string = "save.state"
+)
+
 func saveState(count int) {
 
-	file, err := os.OpenFile("save.state", os.O_WRONLY|os.O_CREATE, 0644)
+	file, err := os.OpenFile(stateFile, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		fmt.Println("Error opening state file:", err)
 		return
@@ -206,16 +210,31 @@ func saveState(count int) {
 
 }
 
-const ()
+func clearState() {
+	file, err := os.OpenFile(stateFile, os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		fmt.Println("Error clearing state file", err)
+	}
+	defer file.Close()
+
+	err = file.Truncate(0)
+	if err != nil {
+		fmt.Println("Error clearing state file", err)
+	}
+}
+
+const (
+	s3NoSuchBucket string = "s3-1-w.amazonaws.com."
+)
 
 func resolveDNS(name string) {
 
 	dnsServer := "8.8.8.8:53"
 	domain := name + ".s3.amazonaws.com"
 
-	s3NoSuchBucket := "s3-1-w.amazonaws.com."
+	// client := new(dns.Client)
+	client := &dns.Client{Timeout: 2 * time.Second}
 
-	client := new(dns.Client)
 	message := new(dns.Msg)
 	message.SetQuestion(dns.Fqdn(domain), dns.TypeCNAME)
 
@@ -303,17 +322,24 @@ var (
 
 func main() {
 	var (
-		wordlist     string
+		wordlist   string
+		prefixfile string
+		suffixfile string
+		// keywordfile  string
 		keywords     []string
 		restoreState bool
 		quickScan    bool
 	)
 	flag.StringVar(&wordlist, "w", "", "wordlist file")
+	flag.StringVar(&prefixfile, "p", "", "prefix file")
+	flag.StringVar(&suffixfile, "s", "", "suffix file")
+
+	// flag.StringVar(&keywordfile, "kf", "", "keyword file")
 
 	// flag.StringVar(&provider, "aws", "", "Provider")
 
 	flag.BoolVar(&restoreState, "restore", false, "restore point from file")
-	flag.BoolVar(&quickScan, "qs", false, "Quick Scan, Use DNS scan only")
+	flag.BoolVar(&quickScan, "qs", false, "Quick Scan, DNS scan only. Not as accurate")
 	flag.BoolVar(&showFiles, "enum", false, "Enumerate filenames")
 
 	flag.IntVar(&skipCount, "skip", 0, "skip first x urls")
@@ -322,23 +348,50 @@ func main() {
 	flag.Parse()
 
 	if flag.NArg() < 1 {
-		fmt.Println("TODO: print help page if no keywords are supplied")
-		os.Exit(1)
+		scanner := bufio.NewScanner(os.Stdin)
+
+		for scanner.Scan() {
+			keywords = append(keywords, scanner.Text())
+		}
+
+	} else {
+
+		keywords = cleanTextList(flag.Args())
 	}
-
-	keywords = cleanTextList(flag.Args())
-
 	wordlistlines, err := readLines(wordlist)
 	if err != nil {
 		if os.IsNotExist(err) {
 			wordlistlines = []string{""}
+		} else {
+			fmt.Println("Error reading wordlist file:", err)
+			os.Exit(1)
+		}
+	}
+
+	// keywords = append(keywords, readLines(keywordfile))
+	// keywords, err := readLines(keywordfile)
+
+	prefixLines, err := readLines(prefixfile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			prefixLines = []string{""}
+		} else {
+			fmt.Println("Error reading prefix file:", err)
+			os.Exit(1)
+		}
+	}
+
+	suffixLines, err := readLines(suffixfile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			suffixLines = []string{""}
 		} else {
 			fmt.Println("Error reading suffix file:", err)
 			os.Exit(1)
 		}
 	}
 
-	var names = buildNames(keywords, wordlistlines)
+	var names = buildNames(keywords, wordlistlines, prefixLines, suffixLines)
 
 	names = removeDuplicates(names)
 
@@ -369,5 +422,6 @@ func main() {
 		}
 		saveState(i)
 	}
+	clearState()
 
 }

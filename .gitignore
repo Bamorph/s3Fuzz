@@ -3,3 +3,5 @@
 open.log
 save.state
 protected.log
+s3Fuzz
+fuzz.txt
