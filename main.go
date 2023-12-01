@@ -143,6 +143,42 @@ func readXMLContent(body io.Reader, bucket string) {
 	// fmt.Println(string(xmlContent))
 }
 
+func anew(filename, line string) error {
+
+	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		if scanner.Text() == line {
+			return nil
+		}
+	}
+	_, err = file.Seek(0, io.SeekEnd)
+	if err != nil {
+		return err
+	}
+
+	_, err = file.WriteString(line + "\n")
+	if err != nil {
+		return err
+	}
+	return nil
+
+}
+
+// func writeStringToFile(filename, content string) error {
+// 	err := os.WriteFile(filename, []byte(content), 0644)
+// 	if err != nil {
+// 		return fmt.Errorf("error writing log", err)
+// 	}
+// 	return nil
+// }
+
 func resolveurl(name string) {
 
 	url := appendAWS(name)
@@ -158,7 +194,7 @@ func resolveurl(name string) {
 	switch resp.StatusCode {
 	case http.StatusOK:
 		greenPrint("Open: " + url)
-
+		anew("open.log", url)
 		// TODO: append to found buckets list for output
 
 		if strings.Contains(resp.Header.Get("Content-Type"), "xml") {
@@ -166,7 +202,7 @@ func resolveurl(name string) {
 		}
 	case http.StatusForbidden:
 		yellowPrint("Protected: " + url)
-
+		anew("protected.log", url)
 		// TODO: append to found buckets list for output
 
 	case http.StatusNotFound:
