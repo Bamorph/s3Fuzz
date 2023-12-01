@@ -75,7 +75,7 @@ func removeDuplicates(input []string) []string {
 			count++
 		}
 	}
-	fmt.Printf("[+] Duplicates removed: %d items", count)
+	fmt.Printf("[+] Duplicates removed: %d items\n", count)
 	return result
 }
 
@@ -91,7 +91,7 @@ func readLines(filename string) ([]string, error) {
 	for scanner.Scan() {
 		lines = append(lines, cleanText(scanner.Text()))
 	}
-	fmt.Printf("[+] Wordlist loaded: %d items", len(lines))
+	fmt.Printf("[+] Wordlist loaded: %d items\n", len(lines))
 	return lines, nil
 }
 
@@ -258,8 +258,6 @@ func yellowPrint(text string) {
 	yellow.Println(text)
 }
 
-// func
-
 // const version = "0.0.7"
 
 // TODO: Feature: can we add a test to attempt to resolve a known bucket to see if we are blocked by AWS and end the search?
@@ -271,16 +269,15 @@ var (
 
 func main() {
 	var (
-		// prefixs  string
-		// suffixs  string
-		wordlist string
-		keywords []string
+		wordlist     string
+		keywords     []string
+		restoreState bool
 	)
 	flag.StringVar(&wordlist, "w", "", "wordlist file")
-	// flag.StringVar(&prefixs, "p", "", "Prefix file")
-	// flag.StringVar(&suffixs, "s", "", "Suffix file")
 
-	flag.IntVar(&skipCount, "restore", 0, "skip first x urls")
+	flag.BoolVar(&restoreState, "restore", false, "restore point from file")
+
+	flag.IntVar(&skipCount, "skip", 0, "skip first x urls")
 	flag.IntVar(&delay, "d", 0, "Delay time in milliseconds")
 
 	flag.Parse()
@@ -291,26 +288,6 @@ func main() {
 	}
 
 	keywords = cleanTextList(flag.Args())
-
-	// prefixLines, err := readLines(prefixs)
-	// if err != nil {
-	// 	if os.IsNotExist(err) {
-	// 		prefixLines = []string{""}
-	// 	} else {
-	// 		fmt.Println("Error reading prefix file:", err)
-	// 		os.Exit(1)
-	// 	}
-	// }
-
-	// suffixLines, err := readLines(suffixs)
-	// if err != nil {
-	// 	if os.IsNotExist(err) {
-	// 		suffixLines = []string{""}
-	// 	} else {
-	// 		fmt.Println("Error reading suffix file:", err)
-	// 		os.Exit(1)
-	// 	}
-	// }
 
 	wordlistlines, err := readLines(wordlist)
 	if err != nil {
@@ -326,22 +303,22 @@ func main() {
 
 	names = removeDuplicates(names)
 
-	// urls := appendAWS(names)
-	// total_test := len(names)
-	fmt.Printf("[+] Keywords: %s\n", keywords)
-
-	// fmt.Printf("[+] Total urls to test: %v\n\n", total_test)
+	fmt.Printf("[+] Keywords: %s\n\n", keywords)
 
 	cyanPrint("[+] Amazon S3 Buckets\n")
 
-	// for i, name := range names {
-	// 	fmt.Printf("\033[K")
-	// 	fmt.Printf("%d / %d, URL: %s\r", i, len(names), name)
-	// 	// fmt.Println(name)
-	// 	resolveurl(name)
-	// }
-
 	// skipCount := 2355
+
+	if restoreState {
+		content, err := os.ReadFile("save.state")
+		if err != nil {
+			fmt.Println("Failed to load restore file", err)
+			os.Exit(1)
+			// skipCount = 0
+		}
+		skipCount, _ = strconv.Atoi(string(content))
+
+	}
 
 	for i := skipCount; i < len(names); i++ {
 		name := names[i]
@@ -349,7 +326,6 @@ func main() {
 		fmt.Printf("%d / %d, URL: %s\r", i, len(names), name)
 		resolveurl(name)
 		saveState(i)
-
 	}
 
 }
