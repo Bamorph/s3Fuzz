@@ -206,6 +206,8 @@ func saveState(count int) {
 
 }
 
+const ()
+
 func resolveDNS(name string) {
 
 	dnsServer := "8.8.8.8:53"
@@ -228,22 +230,14 @@ func resolveDNS(name string) {
 	cname := resp.Answer[0].(*dns.CNAME).Target
 
 	if strings.Contains(cname, s3NoSuchBucket) {
-		// fmt.Println("DNS Search Failed")
-		// redPrint(cname)
-		// redPrint(domain)
-		// fmt.Print("\n\n")
+
 	} else {
-		// fmt.Println("DNS Search Success")
 		resolveurl(name)
-		// yellowPrint(domain)
 	}
-	// fmt.Println(domain)
-	// fmt.Println(cname)
+
 }
 
 func resolveurl(name string) {
-
-	// resolveDNS(name)
 
 	url := appendAWS(name)
 
@@ -362,7 +356,6 @@ func main() {
 			// skipCount = 0
 		}
 		skipCount, _ = strconv.Atoi(string(content))
-
 	}
 
 	for i := skipCount; i < len(names); i++ {
