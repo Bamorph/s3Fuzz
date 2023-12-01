@@ -171,14 +171,6 @@ func anew(filename, line string) error {
 
 }
 
-// func writeStringToFile(filename, content string) error {
-// 	err := os.WriteFile(filename, []byte(content), 0644)
-// 	if err != nil {
-// 		return fmt.Errorf("error writing log", err)
-// 	}
-// 	return nil
-// }
-
 func resolveurl(name string) {
 
 	url := appendAWS(name)
@@ -208,7 +200,6 @@ func resolveurl(name string) {
 	case http.StatusNotFound:
 		return
 	}
-
 }
 
 func redPrint(text string) {
@@ -238,7 +229,8 @@ func yellowPrint(text string) {
 // TODO: Feature: can we add a test to attempt to resolve a known bucket to see if we are blocked by AWS and end the search?
 
 var (
-	delay int
+	delay     int
+	skipCount int
 )
 
 func main() {
@@ -251,6 +243,7 @@ func main() {
 	flag.StringVar(&prefixs, "p", "", "Prefix file")
 	flag.StringVar(&suffixs, "s", "", "Suffix file")
 
+	flag.IntVar(&skipCount, "restore", 0, "skip first x urls")
 	flag.IntVar(&delay, "d", 500, "Delay time in milliseconds")
 
 	// TODO: add output file for found buckets
@@ -298,11 +291,21 @@ func main() {
 
 	cyanPrint("[+] Amazon S3 Buckets\n")
 
-	for i, name := range names {
+	// for i, name := range names {
+	// 	fmt.Printf("\033[K")
+	// 	fmt.Printf("%d / %d, URL: %s\r", i, len(names), name)
+	// 	// fmt.Println(name)
+	// 	resolveurl(name)
+	// }
+
+	// skipCount := 2355
+
+	for i := skipCount; i < len(names); i++ {
+		name := names[i]
 		fmt.Printf("\033[K")
 		fmt.Printf("%d / %d, URL: %s\r", i, len(names), name)
-		// fmt.Println(name)
 		resolveurl(name)
+
 	}
 
 }
