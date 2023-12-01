@@ -9,40 +9,55 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/fatih/color"
 )
 
-func buildNames(keywords []string, suffixs []string, prefixs []string) []string {
+func buildNames(keywords []string, mutations []string) []string {
 	var names []string
+
 	for _, keyword := range keywords {
 		names = append(names, keyword)
 
-		for _, suffix := range suffixs {
-			if suffix != "" {
-				names = append(names, fmt.Sprintf("%s-%s", keyword, suffix))
-				names = append(names, fmt.Sprintf("%s.%s", keyword, suffix))
-				names = append(names, fmt.Sprintf("%s%s", keyword, suffix))
+		delimiters := []string{"-", ".", ""}
+
+		for _, mutation := range mutations {
+			for _, delimiter := range delimiters {
+				mutation = cleanText(mutation)
+				names = append(names, fmt.Sprintf("%s%s%s", keyword, delimiter, mutation))
+				names = append(names, fmt.Sprintf("%s%s%s", mutation, delimiter, keyword))
 			}
-			for _, prefix := range prefixs {
-				if prefix != "" {
-					names = append(names, fmt.Sprintf("%s-%s", prefix, keyword))
-					names = append(names, fmt.Sprintf("%s.%s", prefix, keyword))
-					names = append(names, fmt.Sprintf("%s%s", prefix, keyword))
-				}
-				if prefix != "" && suffix != "" {
-					names = append(names, fmt.Sprintf("%s-%s-%s", prefix, keyword, suffix))
-					names = append(names, fmt.Sprintf("%s.%s.%s", prefix, keyword, suffix))
-					names = append(names, fmt.Sprintf("%s%s%s", prefix, keyword, suffix))
-					names = append(names, fmt.Sprintf("%s-%s-%s", keyword, prefix, suffix))
-					names = append(names, fmt.Sprintf("%s.%s.%s", keyword, prefix, suffix))
-					names = append(names, fmt.Sprintf("%s%s%s", keyword, prefix, suffix))
-				}
-			}
+
 		}
+
+		// 515
+		// for _, suffix := range suffixs {
+		// if suffix != "" {
+		// 	names = append(names, fmt.Sprintf("%s-%s", keyword, suffix))
+		// 	names = append(names, fmt.Sprintf("%s.%s", keyword, suffix))
+		// 	names = append(names, fmt.Sprintf("%s%s", keyword, suffix))
+		// }
+		// for _, prefix := range prefixs {
+		// if prefix != "" {
+		// 	names = append(names, fmt.Sprintf("%s-%s", prefix, keyword))
+		// 	names = append(names, fmt.Sprintf("%s.%s", prefix, keyword))
+		// 	names = append(names, fmt.Sprintf("%s%s", prefix, keyword))
+		// }
+		// if prefix != "" && suffix != "" {
+		// 	names = append(names, fmt.Sprintf("%s-%s-%s", prefix, keyword, suffix))
+		// 	names = append(names, fmt.Sprintf("%s.%s.%s", prefix, keyword, suffix))
+		// 	names = append(names, fmt.Sprintf("%s%s%s", prefix, keyword, suffix))
+		// 	names = append(names, fmt.Sprintf("%s-%s-%s", keyword, prefix, suffix))
+		// 	names = append(names, fmt.Sprintf("%s.%s.%s", keyword, prefix, suffix))
+		// 	names = append(names, fmt.Sprintf("%s%s%s", keyword, prefix, suffix))
+		// }
+		// }
+		// }
 	}
+	fmt.Printf("[+] Mutated results: %v items\n", len(names))
 	return names
 }
 
@@ -50,13 +65,17 @@ func removeDuplicates(input []string) []string {
 	seen := make(map[string]bool)
 	result := []string{}
 
+	count := 0
+
 	for _, str := range input {
 		if !seen[str] {
 			result = append(result, str)
 			seen[str] = true
+		} else {
+			count++
 		}
 	}
-
+	fmt.Printf("[+] Duplicates removed: %d items", count)
 	return result
 }
 
@@ -72,7 +91,7 @@ func readLines(filename string) ([]string, error) {
 	for scanner.Scan() {
 		lines = append(lines, cleanText(scanner.Text()))
 	}
-
+	fmt.Printf("[+] Wordlist loaded: %d items", len(lines))
 	return lines, nil
 }
 
@@ -171,6 +190,22 @@ func anew(filename, line string) error {
 
 }
 
+func saveState(count int) {
+
+	file, err := os.OpenFile("save.state", os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		fmt.Println("Error opening state file:", err)
+		return
+	}
+	defer file.Close()
+	_, err = file.WriteString(strconv.Itoa(count))
+	if err != nil {
+		fmt.Println("error writing state", err)
+		return
+	}
+
+}
+
 func resolveurl(name string) {
 
 	url := appendAWS(name)
@@ -187,7 +222,7 @@ func resolveurl(name string) {
 	case http.StatusOK:
 		greenPrint("Open: " + url)
 		anew("open.log", url)
-		// TODO: append to found buckets list for output
+		anew("found.log", name)
 
 		if strings.Contains(resp.Header.Get("Content-Type"), "xml") {
 			readXMLContent(resp.Body, url)
@@ -195,7 +230,7 @@ func resolveurl(name string) {
 	case http.StatusForbidden:
 		yellowPrint("Protected: " + url)
 		anew("protected.log", url)
-		// TODO: append to found buckets list for output
+		anew("found.log", name)
 
 	case http.StatusNotFound:
 		return
@@ -223,9 +258,10 @@ func yellowPrint(text string) {
 	yellow.Println(text)
 }
 
-// const version = "0.0.6"
+// func
 
-// TODO: write a function called saveToFile(filename string, urls []string) {}
+// const version = "0.0.7"
+
 // TODO: Feature: can we add a test to attempt to resolve a known bucket to see if we are blocked by AWS and end the search?
 
 var (
@@ -235,20 +271,17 @@ var (
 
 func main() {
 	var (
-		prefixs  string
-		suffixs  string
+		// prefixs  string
+		// suffixs  string
+		wordlist string
 		keywords []string
 	)
-
-	flag.StringVar(&prefixs, "p", "", "Prefix file")
-	flag.StringVar(&suffixs, "s", "", "Suffix file")
+	flag.StringVar(&wordlist, "w", "", "wordlist file")
+	// flag.StringVar(&prefixs, "p", "", "Prefix file")
+	// flag.StringVar(&suffixs, "s", "", "Suffix file")
 
 	flag.IntVar(&skipCount, "restore", 0, "skip first x urls")
-	flag.IntVar(&delay, "d", 500, "Delay time in milliseconds")
-
-	// TODO: add output file for found buckets
-
-	// flag.StringVar(&outputFile, "o", "", "Output file")
+	flag.IntVar(&delay, "d", 0, "Delay time in milliseconds")
 
 	flag.Parse()
 
@@ -259,35 +292,45 @@ func main() {
 
 	keywords = cleanTextList(flag.Args())
 
-	prefixLines, err := readLines(prefixs)
-	if err != nil {
-		if os.IsNotExist(err) {
-			prefixLines = []string{""}
-		} else {
-			fmt.Println("Error reading prefix file:", err)
-			os.Exit(1)
-		}
-	}
+	// prefixLines, err := readLines(prefixs)
+	// if err != nil {
+	// 	if os.IsNotExist(err) {
+	// 		prefixLines = []string{""}
+	// 	} else {
+	// 		fmt.Println("Error reading prefix file:", err)
+	// 		os.Exit(1)
+	// 	}
+	// }
 
-	suffixLines, err := readLines(suffixs)
+	// suffixLines, err := readLines(suffixs)
+	// if err != nil {
+	// 	if os.IsNotExist(err) {
+	// 		suffixLines = []string{""}
+	// 	} else {
+	// 		fmt.Println("Error reading suffix file:", err)
+	// 		os.Exit(1)
+	// 	}
+	// }
+
+	wordlistlines, err := readLines(wordlist)
 	if err != nil {
 		if os.IsNotExist(err) {
-			suffixLines = []string{""}
+			wordlistlines = []string{""}
 		} else {
 			fmt.Println("Error reading suffix file:", err)
 			os.Exit(1)
 		}
 	}
 
-	var names = buildNames(keywords, suffixLines, prefixLines)
+	var names = buildNames(keywords, wordlistlines)
 
 	names = removeDuplicates(names)
 
 	// urls := appendAWS(names)
-	total_test := len(names)
+	// total_test := len(names)
 	fmt.Printf("[+] Keywords: %s\n", keywords)
 
-	fmt.Printf("[+] Total urls to test: %v\n\n", total_test)
+	// fmt.Printf("[+] Total urls to test: %v\n\n", total_test)
 
 	cyanPrint("[+] Amazon S3 Buckets\n")
 
@@ -305,6 +348,7 @@ func main() {
 		fmt.Printf("\033[K")
 		fmt.Printf("%d / %d, URL: %s\r", i, len(names), name)
 		resolveurl(name)
+		saveState(i)
 
 	}
 
