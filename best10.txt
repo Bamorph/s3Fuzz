@@ -1,0 +1,10 @@
+com
+assets
+production
+static
+prod
+org
+staging
+media
+images
+dev
