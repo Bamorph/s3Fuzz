@@ -316,7 +316,7 @@ func yellowPrint(text string) {
 	yellow.Println(text)
 }
 
-// const version = "0.0.8"
+// const version = "0.0.9"
 
 // TODO: Feature: can we add a test to attempt to resolve a known bucket to see if we are blocked by AWS and end the search?
 
@@ -329,10 +329,9 @@ var (
 
 func main() {
 	var (
-		wordlist   string
-		prefixfile string
-		suffixfile string
-		// keywordfile  string
+		wordlist     string
+		prefixfile   string
+		suffixfile   string
 		keywords     []string
 		restoreState bool
 		quickScan    bool
@@ -342,8 +341,6 @@ func main() {
 	flag.StringVar(&suffixfile, "s", "", "suffix file")
 
 	flag.StringVar(&outBucketLog, "ob", "found.log", "output file with bucket names")
-
-	// flag.StringVar(&keywordfile, "kf", "", "keyword file")
 
 	// flag.StringVar(&provider, "aws", "", "Provider")
 
@@ -404,7 +401,7 @@ func main() {
 
 	names = removeDuplicates(names)
 
-	fmt.Printf("[+] Keywords: %s\n", keywords)
+	fmt.Printf("\n[+] Keywords: %s\n", keywords)
 	fmt.Printf("[+] Output Log: %s\n\n", outBucketLog)
 
 	cyanPrint("[+] Amazon S3 Buckets\n")
