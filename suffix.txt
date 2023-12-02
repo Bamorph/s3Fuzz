@@ -57,3 +57,10 @@ image
 02
 2023
 2024
+html
+php
+py
+cgi
+txt
+json
+xml

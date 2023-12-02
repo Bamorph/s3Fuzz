@@ -36,11 +36,13 @@ func buildNames(keywords []string, mutations []string, prefixs []string, suffixs
 		}
 		for _, prefix := range prefixs {
 			if prefix != "" {
+				prefix = cleanText(prefix)
 				for _, delimiter := range delimiters {
 					names = append(names, fmt.Sprintf("%s%s%s", prefix, delimiter, keyword))
 				}
 			}
 			for _, suffix := range suffixs {
+				suffix = cleanText(suffix)
 				if suffix != "" {
 					for _, delimiter := range delimiters {
 						names = append(names, fmt.Sprintf("%s%s%s", suffix, delimiter, keyword))
@@ -48,7 +50,9 @@ func buildNames(keywords []string, mutations []string, prefixs []string, suffixs
 				}
 				if prefix != "" && suffix != "" {
 					for _, delimiter := range delimiters {
+
 						names = append(names, fmt.Sprintf("%s%s%s%s%s", prefix, delimiter, keyword, delimiter, suffix))
+						names = append(names, fmt.Sprintf("%s%s%s%s%s", keyword, delimiter, prefix, delimiter, suffix))
 					}
 				}
 			}
@@ -229,6 +233,8 @@ const (
 
 func resolveDNS(name string) {
 
+	// time.Sleep(time.Duration(delay) * time.Millisecond)
+
 	dnsServer := "8.8.8.8:53"
 	domain := name + ".s3.amazonaws.com"
 
@@ -243,7 +249,7 @@ func resolveDNS(name string) {
 		return
 	}
 	if len(resp.Answer) == 0 {
-		fmt.Printf("no CNAME: %s", domain)
+		// redPrint("no CNAME: " + domain)
 		return
 	}
 	cname := resp.Answer[0].(*dns.CNAME).Target
@@ -251,7 +257,10 @@ func resolveDNS(name string) {
 	if strings.Contains(cname, s3NoSuchBucket) {
 
 	} else {
-		resolveurl(name)
+		// resolveurl(name)
+		yellowPrint("DNS: " + domain)
+		anew("dns.log", "https://"+domain)
+		anew("found.log", name)
 	}
 
 }
@@ -339,7 +348,7 @@ func main() {
 	// flag.StringVar(&provider, "aws", "", "Provider")
 
 	flag.BoolVar(&restoreState, "restore", false, "restore point from file")
-	flag.BoolVar(&quickScan, "qs", false, "Quick Scan, DNS scan only. Not as accurate")
+	flag.BoolVar(&quickScan, "dns", false, "DNS scan only. Not as accurate")
 	flag.BoolVar(&showFiles, "enum", false, "Enumerate filenames")
 
 	flag.IntVar(&skipCount, "skip", 0, "skip first x urls")
@@ -416,7 +425,7 @@ func main() {
 		fmt.Printf("\033[K")
 		fmt.Printf("%d / %d, URL: %s\r", i, len(names), name)
 		if quickScan {
-			resolveDNS(name)
+			go resolveDNS(name)
 		} else {
 			resolveurl(name)
 		}
