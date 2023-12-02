@@ -316,7 +316,7 @@ func yellowPrint(text string) {
 	yellow.Println(text)
 }
 
-// const version = "0.0.9"
+// const version = "0.1.0"
 
 // TODO: Feature: can we add a test to attempt to resolve a known bucket to see if we are blocked by AWS and end the search?
 
@@ -404,6 +404,10 @@ func main() {
 	fmt.Printf("\n[+] Keywords: %s\n", keywords)
 	fmt.Printf("[+] Output Log: %s\n\n", outBucketLog)
 
+	if quickScan {
+		cyanPrint("[+] DNS quicks scan\n\n")
+	}
+
 	cyanPrint("[+] Amazon S3 Buckets\n")
 
 	// skipCount := 2355
@@ -431,5 +435,4 @@ func main() {
 		saveState(i)
 	}
 	clearState()
-
 }
