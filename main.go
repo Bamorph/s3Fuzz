@@ -233,8 +233,6 @@ const (
 
 func resolveDNS(name string) {
 
-	// time.Sleep(time.Duration(delay) * time.Millisecond)
-
 	dnsServer := "8.8.8.8:53"
 	domain := name + ".s3.amazonaws.com"
 
@@ -248,8 +246,8 @@ func resolveDNS(name string) {
 	if err != nil {
 		return
 	}
-	if len(resp.Answer) == 0 {
-		// redPrint("no CNAME: " + domain)
+	if len(resp.Answer) != 1 {
+		redPrint("no CNAME: " + domain)
 		return
 	}
 	cname := resp.Answer[0].(*dns.CNAME).Target
@@ -260,7 +258,7 @@ func resolveDNS(name string) {
 		// resolveurl(name)
 		yellowPrint("DNS: " + domain)
 		anew("dns.log", "https://"+domain)
-		anew("found.log", name)
+		anew(outBucketLog, name)
 	}
 
 }
@@ -281,7 +279,7 @@ func resolveurl(name string) {
 	case http.StatusOK:
 		greenPrint("Open: " + url)
 		anew("open.log", url)
-		anew("found.log", name)
+		anew(outBucketLog, name)
 		if showFiles {
 			if strings.Contains(resp.Header.Get("Content-Type"), "xml") {
 				readXMLContent(resp.Body, url)
@@ -290,7 +288,7 @@ func resolveurl(name string) {
 	case http.StatusForbidden:
 		yellowPrint("Protected: " + url)
 		anew("protected.log", url)
-		anew("found.log", name)
+		anew(outBucketLog, name)
 
 	case http.StatusNotFound:
 		return
@@ -314,6 +312,7 @@ func greenPrint(text string) {
 }
 func yellowPrint(text string) {
 	fmt.Printf("\033[K")
+	fmt.Printf("\033[K")
 	yellow := color.New(color.FgHiYellow, color.Bold)
 	yellow.Println(text)
 }
@@ -323,10 +322,10 @@ func yellowPrint(text string) {
 // TODO: Feature: can we add a test to attempt to resolve a known bucket to see if we are blocked by AWS and end the search?
 
 var (
-	delay     int
-	skipCount int
-	// provider  string
-	showFiles bool
+	delay        int
+	skipCount    int
+	showFiles    bool
+	outBucketLog string
 )
 
 func main() {
@@ -343,6 +342,8 @@ func main() {
 	flag.StringVar(&prefixfile, "p", "", "prefix file")
 	flag.StringVar(&suffixfile, "s", "", "suffix file")
 
+	flag.StringVar(&outBucketLog, "ob", "found.log", "output file with bucket names")
+
 	// flag.StringVar(&keywordfile, "kf", "", "keyword file")
 
 	// flag.StringVar(&provider, "aws", "", "Provider")
@@ -352,7 +353,7 @@ func main() {
 	flag.BoolVar(&showFiles, "enum", false, "Enumerate filenames")
 
 	flag.IntVar(&skipCount, "skip", 0, "skip first x urls")
-	flag.IntVar(&delay, "d", 0, "Delay time in milliseconds")
+	flag.IntVar(&delay, "d", 50, "Delay time in milliseconds")
 
 	flag.Parse()
 
@@ -423,8 +424,9 @@ func main() {
 	for i := skipCount; i < len(names); i++ {
 		name := names[i]
 		fmt.Printf("\033[K")
-		fmt.Printf("%d / %d, URL: %s\r", i, len(names), name)
+		fmt.Printf("%d / %d, Name: %s\r", i, len(names), name)
 		if quickScan {
+			time.Sleep(time.Duration(delay) * time.Millisecond)
 			go resolveDNS(name)
 		} else {
 			resolveurl(name)
