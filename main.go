@@ -404,7 +404,8 @@ func main() {
 
 	names = removeDuplicates(names)
 
-	fmt.Printf("[+] Keywords: %s\n\n", keywords)
+	fmt.Printf("[+] Keywords: %s\n", keywords)
+	fmt.Printf("[+] Output Log: %s\n\n", outBucketLog)
 
 	cyanPrint("[+] Amazon S3 Buckets\n")
 
