@@ -50,9 +50,10 @@ func buildNames(keywords []string, mutations []string, prefixs []string, suffixs
 				}
 				if prefix != "" && suffix != "" {
 					for _, delimiter := range delimiters {
-
 						names = append(names, fmt.Sprintf("%s%s%s%s%s", prefix, delimiter, keyword, delimiter, suffix))
+						// add check for deep flag
 						names = append(names, fmt.Sprintf("%s%s%s%s%s", keyword, delimiter, prefix, delimiter, suffix))
+						names = append(names, fmt.Sprintf("%s%s%s%s%s", prefix, delimiter, suffix, delimiter, keyword))
 					}
 				}
 			}
@@ -60,7 +61,6 @@ func buildNames(keywords []string, mutations []string, prefixs []string, suffixs
 		}
 
 	}
-	fmt.Println(names)
 	fmt.Printf("[+] Mutated results: %v items\n", len(names))
 	return names
 }
@@ -211,7 +211,6 @@ func saveState(count int) {
 		fmt.Println("error writing state", err)
 		return
 	}
-
 }
 
 func clearState() {
