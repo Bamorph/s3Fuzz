@@ -5,3 +5,5 @@ save.state
 protected.log
 s3Fuzz
 fuzz.txt
+snipe_pre.txt
+snipe_suf.txt

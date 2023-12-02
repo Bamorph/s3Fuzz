@@ -345,7 +345,7 @@ func main() {
 	// flag.StringVar(&provider, "aws", "", "Provider")
 
 	flag.BoolVar(&restoreState, "restore", false, "restore point from file")
-	flag.BoolVar(&quickScan, "dns", false, "DNS scan only. Not as accurate")
+	flag.BoolVar(&quickScan, "dns", false, "DNS scan only. very fast but not as accurate approx. 60%")
 	flag.BoolVar(&showFiles, "enum", false, "Enumerate filenames")
 
 	flag.IntVar(&skipCount, "skip", 0, "skip first x urls")
