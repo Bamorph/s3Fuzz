@@ -45,7 +45,7 @@ func buildNames(keywords []string, mutations []string, prefixs []string, suffixs
 				suffix = cleanText(suffix)
 				if suffix != "" {
 					for _, delimiter := range delimiters {
-						names = append(names, fmt.Sprintf("%s%s%s", suffix, delimiter, keyword))
+						names = append(names, fmt.Sprintf("%s%s%s", keyword, delimiter, suffix))
 					}
 				}
 				if prefix != "" && suffix != "" {
@@ -60,7 +60,7 @@ func buildNames(keywords []string, mutations []string, prefixs []string, suffixs
 		}
 
 	}
-
+	fmt.Println(names)
 	fmt.Printf("[+] Mutated results: %v items\n", len(names))
 	return names
 }
