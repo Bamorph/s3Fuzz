@@ -64,3 +64,4 @@ cgi
 txt
 json
 xml
+wp-images
